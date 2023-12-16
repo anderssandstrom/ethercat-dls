@@ -190,6 +190,47 @@ def getEntryName(node):
     name= name.replace(" ", "")
     return name
 
+def getEntryIndex(node):
+    index= node.xpathEval("Index")[0].content
+    index= index.replace(" ", "")
+    index= index.replace("#", "")
+    return int("0"+index,16)
+
+def getEntrySubIndex(node):
+    index= node.xpathEval("SubIndex")[0].content
+    index= index.replace(" ", "")
+    return int(index)
+
+def getEntryDataType(node):
+    dt= node.xpathEval("DataType")[0].content
+    dt= dt.replace(" ", "")
+    return dt
+
+def getEntryBitLen(node):
+    bitlen= node.xpathEval("BitLen")[0].content
+    bitlen= bitlen.replace(" ", "")
+    return int(bitlen)
+
+def printEcmcAddEntry(vendor,product,pdo,entry,direction,updateInRT):
+    # <TxPdo Fixed="1" Sm="3">
+    sm = pdo.prop("Sm")
+    pdoName = getPdoName(pdo)
+    pdoIndex = getPdoIndex(pdo)
+    entryName = getEntryName(entry)
+    entryIndex = getEntryIndex(entry)
+    entrySubIndex = getEntrySubIndex(entry)
+    dt = getEntryDataType(entry)
+    dataLen = getEntryBitLen(entry)
+    #print('SM           : ', sm)
+    #print('PdoName      : ', pdoName)
+    #print('PdoIndex     : ', pdoIndex)
+    #print('EntryName    : ', entryName)
+    #print('EntryIndex   : ', entryIndex)
+    #print('EntrySubIndex: ', entrySubIndex)
+    #print('DataType     : ', dt)
+    #print('DataLen      : ', dataLen)
+    print('ecmcConfigOrDie "Cfg.EcAddEntryDT(${ECMC_EC_SLAVE_NUM},0x%x,ox%x,%d,%d,0x%x,0x%x,0x%x,%s_%d,%s,%d)' % (vendor, product, int(direction), int(sm), pdoIndex, entryIndex, entrySubIndex, dt, int(dataLen), entryName ,int(updateInRT) ))
+
 def parseFile(filename, output, list_devices, extraPdos):
     doc = libxml2.parseFile(filename)
     vendor = parseInt(doc.xpathEval("//Vendor/Id")[0].content)
@@ -222,6 +263,7 @@ def parseFile(filename, output, list_devices, extraPdos):
                 if not txpdo.xpathEval("@Sm"):
                     if not (getPdoIndex(txpdo) in extraPdos):
                         continue
+
                 for entry in txpdo.xpathEval("Entry"):
                     # some pdo entries are just padding with no name, ignore
                     if hasEntryName(entry):
@@ -232,8 +274,13 @@ def parseFile(filename, output, list_devices, extraPdos):
                             ai.append(getPdoName(txpdo) + "." + getEntryName(entry) )
                         else:
                             longin.append(getPdoName(txpdo) + "." + getEntryName(entry) )
-                    elif verbose:
+                        #print('EntryName    : ', getEntryName(entry))
+                        #print('EntryIndex   : ', getEntryIndex(entry))
+                        #print('EntrySubIndex: ', getEntrySubIndex(entry))
+                        printEcmcAddEntry(vendor,product,txpdo,entry,2,1)
+                    elif verbose or True:
                         print("Ignoring entry in pdo %s" % getPdoName(txpdo))
+
             for rxpdo in device.xpathEval("RxPdo"):
                 # pdos without sync manager entries are not default
                 if not rxpdo.xpathEval("@Sm"):
@@ -247,6 +294,7 @@ def parseFile(filename, output, list_devices, extraPdos):
                             bo.append(getPdoName(rxpdo) + "." + getEntryName(entry) )
                         else:
                             longout.append(getPdoName(rxpdo) + "." + getEntryName(entry) )
+                        printEcmcAddEntry(vendor,product,rxpdo,entry,1,1)
                     elif verbose:
                         print("Ignoring entry in pdo %s" % getPdoName(txpdo))
 
