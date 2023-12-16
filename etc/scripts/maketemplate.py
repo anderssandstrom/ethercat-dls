@@ -231,6 +231,27 @@ def printEcmcAddEntry(vendor,product,pdo,entry,direction,updateInRT):
     #print('DataLen      : ', dataLen)
     print('ecmcConfigOrDie "Cfg.EcAddEntryDT(${ECMC_EC_SLAVE_NUM},0x%x,ox%x,%d,%d,0x%x,0x%x,0x%x,%s_%d,%s,%d)' % (vendor, product, int(direction), int(sm), pdoIndex, entryIndex, entrySubIndex, dt, int(dataLen), entryName ,int(updateInRT) ))
 
+def printEcmcAddEntryEmpty(vendor,product,pdo,entry,direction,emptyIndex):
+    # <TxPdo Fixed="1" Sm="3">
+    sm = int(pdo.prop("Sm"))
+    pdoName = getPdoName(pdo)
+    pdoIndex = getPdoIndex(pdo)
+    entryName = "ec${ECMC_EC_MASTER_ID}.s${ECMC_EC_SLAVE_NUM}.sm" + str(sm) + ".pdo" + str(pdo) + ".empty" + str(emptyIndex)
+    entryIndex = getEntryIndex(entry)
+    #entrySubIndex = getEntrySubIndex(entry)
+    #dt = getEntryDataType(entry)
+    dataLen = getEntryBitLen(entry)
+    print(entry)
+    #print('SM           : ', sm)
+    #print('PdoName      : ', pdoName)
+    #print('PdoIndex     : ', pdoIndex)
+    #print('EntryName    : ', entryName)
+    #print('EntryIndex   : ', entryIndex)
+    #print('EntrySubIndex: ', entrySubIndex)
+    #print('DataType     : ', dt)
+    #print('DataLen      : ', dataLen)
+    #print('ecmcConfigOrDie "Cfg.EcAddEntryDT(${ECMC_EC_SLAVE_NUM},0x%x,ox%x,%d,%d,0x%x,0x%x,0x%x,%s_%d,%s,%d)' % (vendor, product, int(direction), int(sm), pdoIndex, entryIndex, entrySubIndex, dt, int(dataLen), entryName , 0 ))
+
 def parseFile(filename, output, list_devices, extraPdos):
     doc = libxml2.parseFile(filename)
     vendor = parseInt(doc.xpathEval("//Vendor/Id")[0].content)
@@ -258,6 +279,7 @@ def parseFile(filename, output, list_devices, extraPdos):
             
             for dcmode in device.xpathEval("Dc/OpMode/Sm/Pdo[@OSFac]"):
                 oversampling.add(parseInt(dcmode.content))
+            emptyIndex = 0
             for txpdo in device.xpathEval("TxPdo"):
                 # pdos without sync manager entries are not default
                 if not txpdo.xpathEval("@Sm"):
@@ -280,7 +302,9 @@ def parseFile(filename, output, list_devices, extraPdos):
                         printEcmcAddEntry(vendor,product,txpdo,entry,2,1)
                     elif verbose or True:
                         print("Ignoring entry in pdo %s" % getPdoName(txpdo))
-
+                        printEcmcAddEntryEmpty(vendor,product,txpdo,entry,2,emptyIndex)
+                        emptyIndex = emptyIndex + 1
+            emptyIndex = 0
             for rxpdo in device.xpathEval("RxPdo"):
                 # pdos without sync manager entries are not default
                 if not rxpdo.xpathEval("@Sm"):
@@ -297,6 +321,8 @@ def parseFile(filename, output, list_devices, extraPdos):
                         printEcmcAddEntry(vendor,product,rxpdo,entry,1,1)
                     elif verbose:
                         print("Ignoring entry in pdo %s" % getPdoName(txpdo))
+                        printEcmcAddEntryEmpty(vendor,product,rxpdo,entry,1,emptyIndex)
+                        emptyIndex = emptyIndex + 1
 
             makeTemplate(ai, longin, longout, bi, bo, output, base, devtype, revision, extraPdos)
 
